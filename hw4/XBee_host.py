@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+
 # XBee setting
 
-serdev = '/dev/ttyUSB2'
+serdev = '/dev/ttyUSB0'
 
 s = serial.Serial(serdev, 9600)
 
@@ -83,31 +84,23 @@ time_stamp=np.array([0,1,2,3,4,5,6,7,8,9,10.11,12,13,14,15,16,17,18,19,20])
 
 query_time =0
 y=''
-while query_time <= 21:
-    send="/getAcc/run\r"
-    s.write(send.encode())
-    while(1):
+s.write("/getAcc/run\r".encode())
+time.sleep(0.5)
+s.write("/getAcc/run\r".encode())
+time.sleep(0.5)
+line=s.read(1)
+while query_time <= 19:
+    s.write("/getAcc/run\r".encode())
 
-        print("1"+"\n")
-        line = s.read(1).decode()
-        #print(line+"\n")
-        if (line=='\n')or(line=="\r"):
-            break
-        else:
-            y=y+line
-            print(y)
+    line=s.readline()
+    line1=s.readline()
 
-    print(y)
+    x.append(10*int(line)+int(line1))
 
-    x.append(y)
-
-    print('')
-
-    print(query_time)
-
-    y=''
+    print(x)
 
     query_time = query_time + 1
+
     time.sleep(1)
 
 fig, ax = plt.subplots(1, 1)
@@ -118,9 +111,6 @@ l1,=ax.plot(time_stamp,x)
 ax.set_xlabel('timestamp')
 
 ax.set_ylabel('acc value')
-
-ax.legend((l1),('X'))
-
 
 plt.show()
 
