@@ -65,6 +65,8 @@ volatile int arrivedcount = 0;
 volatile bool closed = false;
 
 
+int change=0;
+
 const char* topic = "Mbed";
 
 int tilt =0;
@@ -79,6 +81,7 @@ char temp[100];
 
 I2C i2c( PTD9,PTD8);
 
+int fast =0;
 
 int m_addr = FXOS8700CQ_SLAVE_ADDR1;
 
@@ -88,7 +91,7 @@ void FXOS8700CQ_writeRegs(uint8_t * data, int len);
 
 void getAcc(Arguments *in, Reply *out);
 
-Thread mqtt_thread(osPriorityHigh);
+Thread mqtt_thread;
 
 EventQueue mqtt_queue;
 
@@ -230,7 +233,7 @@ int main() {
 
       //TODO: revise host to your ip
 
-      const char* host = "192.168.100.7";
+      const char* host = "192.168.43.151";
 
       printf("Connecting to TCP network...\r\n");
 
@@ -356,65 +359,64 @@ int main() {
 
       thr.start(callback(&queue, &EventQueue::dispatch_forever));
 
-      xbee.attach(xbee_rx_interrupt, Serial::RxIrq);   
+    //  xbee.attach(xbee_rx_interrupt, Serial::RxIrq);   
+      queue.call(&xbee_rx);
 
       while (1) {
 
-            if (closed) break;
+         FXOS8700CQ_readRegs(FXOS8700Q_OUT_X_MSB, res, 6);
 
-            else
-            {
-               FXOS8700CQ_readRegs(FXOS8700Q_OUT_X_MSB, res, 6);
+         acc16 = (res[0] << 6) | (res[1] >> 2);
 
+         if (acc16 > UINT14_MAX/2)
 
-               acc16 = (res[0] << 6) | (res[1] >> 2);
+            acc16 -= UINT14_MAX;
 
-                  if (acc16 > UINT14_MAX/2)
+         t[0] = ((float)acc16) / 4096.0f;
 
-                     acc16 -= UINT14_MAX;
+         acc16 = (res[2] << 6) | (res[3] >> 2);
 
-               t[0] = ((float)acc16) / 4096.0f;
+         if (acc16 > UINT14_MAX/2)
 
+            acc16 -= UINT14_MAX;
 
-               acc16 = (res[2] << 6) | (res[3] >> 2);
-
-                  if (acc16 > UINT14_MAX/2)
-
-               acc16 -= UINT14_MAX;
-
-               t[1] = ((float)acc16) / 4096.0f;
+         t[1] = ((float)acc16) / 4096.0f;
 
 
-               acc16 = (res[4] << 6) | (res[5] >> 2);
+         acc16 = (res[4] << 6) | (res[5] >> 2);
 
-                  if (acc16 > UINT14_MAX/2)
+         if (acc16 > UINT14_MAX/2)
 
-               acc16 -= UINT14_MAX;
+            acc16 -= UINT14_MAX;
 
-               t[2] = ((float)acc16) / 4096.0f;
+         t[2] = ((float)acc16) / 4096.0f;
 
-               mqtt_queue.call(&publish_message, &client);
-            }
+         mqtt_queue.call(&publish_message, &client);
 
-         if( (t[2] < 1/sqrt(2))||sample_time!=0 ){
-            if(sample_time <= 10){
+         if( ((t[2] < 1/sqrt(2))||sample_time!=0)&&change ==0 ){
+            if(sample_time < 10){
                sample_time = sample_time + 1;
 
             }
             else
             {
+               change =1;
                sample_time =0;
             }
-            sum_data = sum_data +1;   
+          //  sum_data = sum_data +1;   
             wait(0.1);
          }
          else
          {
-            sum_data = sum_data +1;   
+            change =0;
+          //  sum_data = sum_data +1;   
             wait(0.5);
          }
 
+         sum_data=sum_data+1;
+
       }
+
 
 
       printf("Ready to close MQTT Network......\n");
@@ -474,32 +476,26 @@ void xbee_rx_interrupt(void)
 void xbee_rx(void)
 
 {
-   char buf[100];
-
-   char outbuf[100];
-
+while(1){
+  char buf[30] = {0};
+  char outbuf[30] = {0};
   while(xbee.readable()){
-     memset(buf, 0, 100); 
-
-   for (int i=0; ; i++) {
-
+    for (int i=0; ; i++) {
       char recv = xbee.getc();
-
       if (recv == '\r') {
-      break;
-
+        break;
       }
-
-      buf[i] = xbee.putc(recv);
-
-   }
+      buf[i] = pc.putc(recv);
+    }
+    //fast =1;
+    RPC::call(buf, outbuf);
+    //pc.printf("%s\r\n", outbuf);
+    //fast =0;
+    wait(0.00005);
   }
-   RPC::call(buf, outbuf);
-   pc.printf("%s\n",outbuf);
-   //xbee.printf("%s\n",temp);
-   sum_data =0;
-
-  xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
+}
+//redLED=1;
+//  xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
 
 }
 
@@ -551,11 +547,9 @@ void check_addr(char *xbee_reply, char *messenger){
 
 void getAcc(Arguments *in, Reply *out) {
 
-   sprintf(temp,"%d",sum_data/10);
-   xbee.printf("%d",sum_data);
-   sprintf(temp,"%d",sum_data%10);
-   xbee.printf("%d",sum_data);
-   xbee.printf("\n");
-   redLED =0;
-
+    xbee.printf("%d\r\n", sum_data/10);
+    wait(0.00003);
+    xbee.printf("%d\r\n", sum_data%10);
+    sum_data =0;
+   // redLED=0;
 }
