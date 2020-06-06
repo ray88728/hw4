@@ -359,8 +359,7 @@ int main() {
 
       thr.start(callback(&queue, &EventQueue::dispatch_forever));
 
-    //  xbee.attach(xbee_rx_interrupt, Serial::RxIrq);   
-      queue.call(&xbee_rx);
+      xbee.attach(xbee_rx_interrupt, Serial::RxIrq);   
 
       while (1) {
 
@@ -400,20 +399,20 @@ int main() {
             }
             else
             {
-               change =1;
+             //  change =1;
                sample_time =0;
             }
-          //  sum_data = sum_data +1;   
+            sum_data = sum_data +1;   
             wait(0.1);
          }
          else
          {
-            change =0;
-          //  sum_data = sum_data +1;   
+           // change =0;
+            sum_data = sum_data +1;   
             wait(0.5);
          }
 
-         sum_data=sum_data+1;
+         //sum_data=sum_data+1;
 
       }
 
@@ -476,26 +475,38 @@ void xbee_rx_interrupt(void)
 void xbee_rx(void)
 
 {
-while(1){
-  char buf[30] = {0};
-  char outbuf[30] = {0};
+
+  char buf[100] = {0};
+
+  char outbuf[100] = {0};
+
   while(xbee.readable()){
+
     for (int i=0; ; i++) {
+
       char recv = xbee.getc();
+
       if (recv == '\r') {
+
         break;
+
       }
+
       buf[i] = pc.putc(recv);
+
     }
-    //fast =1;
+
     RPC::call(buf, outbuf);
-    //pc.printf("%s\r\n", outbuf);
-    //fast =0;
-    wait(0.00005);
+
+    pc.printf("1\r\n");
+
+    pc.printf("%s\r\n", outbuf);
+
+    wait(0.1);
+
   }
-}
-//redLED=1;
-//  xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
+
+  xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
 
 }
 
@@ -548,8 +559,7 @@ void check_addr(char *xbee_reply, char *messenger){
 void getAcc(Arguments *in, Reply *out) {
 
     xbee.printf("%d\r\n", sum_data/10);
-    wait(0.00003);
+    wait(0.0003);
     xbee.printf("%d\r\n", sum_data%10);
     sum_data =0;
-   // redLED=0;
 }
