@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+import threading
 
 # XBee setting
 
-serdev = '/dev/ttyUSB0'
+serdev = '/dev/ttyUSB2'
 
 s = serial.Serial(serdev, 9600)
 
@@ -89,6 +90,19 @@ time.sleep(0.5)
 s.write("/getAcc/run\r".encode())
 time.sleep(0.5)
 line=s.read(1)
+line1=0
+
+
+def job(a1,a2):
+    while 1:
+        a1=[]
+        a2=[]
+        s.write("/getAcc/run\r".encode())
+        time.sleep(1)
+
+thread_get = threading.Thread(target = job, args=(line,line1))
+thread_get.start()
+
 while query_time <= 19:
     s.write("/getAcc/run\r".encode())
 
